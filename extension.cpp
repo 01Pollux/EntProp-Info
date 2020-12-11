@@ -69,9 +69,8 @@ static SMServerClass::CEntityFactoryDictionary* GetEntityFactoryDictionary()
 		{
 			int offset;
 			if (!gc->GetOffset("EntityFactoryOffset", &offset) || !offset)
-			{
-				return NULL;
-			}
+				return nullptr;
+
 			dict = *reinterpret_cast<EntFactory**>((intptr_t)addr + offset);
 
 			gameconfs->CloseGameConfigFile(gc);
@@ -86,28 +85,22 @@ static SMServerClass::CEntityFactoryDictionary* GetEntityFactoryDictionary()
 			int offset;
 
 			if (!gc->GetMemSig("EntityFactoryCaller", &addr) || !addr)
-				return NULL;
+				return nullptr;
 
 			if (!gc->GetOffset("EntityFactoryCallOffset", &offset))
-				return NULL;
+				return nullptr;
 
 			// Get relative offset to function
-			int32_t funcOffset = *(int32_t*)((intptr_t)addr + offset);
+			uintptr_t funcOffset = *reinterpret_cast<uintptr_t*>(reinterpret_cast<uintptr_t>(addr) + offset);
 
 			// Get real address of function
 			// Address of signature + offset of relative offset + sizeof(int32_t) offset + relative offset
-			addr = (void*)((intptr_t)addr + offset + 4 + funcOffset);
+			addr = reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(addr) + offset + 4 + funcOffset);
 		}
 
-		std::function<EntFactory*()> call = std::bind(reinterpret_cast<EntFactory*(*)()>(addr));
-		try
-		{
-			return call();
-		}
-		catch (std::bad_function_call e)
-		{
-			smutils->LogError(myself, "Invalid function call for GetEntityFactoryDictionary");
-		}
+		auto call = reinterpret_cast<EntFactory*(*)()>(addr);
+		if (call)
+			dict = call();
 	}
 	gameconfs->CloseGameConfigFile(gc);
 #endif
