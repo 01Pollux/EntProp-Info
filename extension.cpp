@@ -1,7 +1,6 @@
 /**
  * vim: set ts=4 :
  * =============================================================================
- * SourceMod Sample Extension
  * Copyright (C) 2004-2008 AlliedModders LLC.  All rights reserved.
  * =============================================================================
  *
@@ -37,7 +36,7 @@
 
 #include <toolframework/itoolentity.h>
 
-class SMSendPropUtils : public SDKExtension
+class SMEntPropUtils : public SDKExtension
 {
 public:
 	bool SDK_OnLoad(char* error, size_t maxlength, bool late) override;
@@ -48,12 +47,14 @@ public:
 #endif
 };
 
+#ifdef SMEXT_CONF_METAMOD
 static IServerTools* servertools;
+#endif
 
 static SMServerClass::CEntityFactoryDictionary* GetEntityFactoryDictionary()
 {
 	using EntFactory = SMServerClass::CEntityFactoryDictionary;
-	static EntFactory* dict = NULL;
+	static EntFactory* dict = nullptr;
 
 #ifdef SMEXT_CONF_METAMOD
 	dict = reinterpret_cast<EntFactory*>(servertools->GetEntityFactoryDictionary());
@@ -69,11 +70,12 @@ static SMServerClass::CEntityFactoryDictionary* GetEntityFactoryDictionary()
 		{
 			int offset;
 			if (!gc->GetOffset("EntityFactoryOffset", &offset) || !offset)
+			{
+				gameconfs->CloseGameConfigFile(gc);
 				return nullptr;
+			}
 
 			dict = *reinterpret_cast<EntFactory**>((intptr_t)addr + offset);
-
-			gameconfs->CloseGameConfigFile(gc);
 		}
 	}
 
@@ -85,10 +87,16 @@ static SMServerClass::CEntityFactoryDictionary* GetEntityFactoryDictionary()
 			int offset;
 
 			if (!gc->GetMemSig("EntityFactoryCaller", &addr) || !addr)
+			{
+				gameconfs->CloseGameConfigFile(gc);
 				return nullptr;
+			}
 
 			if (!gc->GetOffset("EntityFactoryCallOffset", &offset))
+			{
+				gameconfs->CloseGameConfigFile(gc);
 				return nullptr;
+			}
 
 			// Get relative offset to function
 			uintptr_t funcOffset = *reinterpret_cast<uintptr_t*>(reinterpret_cast<uintptr_t>(addr) + offset);
@@ -108,7 +116,7 @@ static SMServerClass::CEntityFactoryDictionary* GetEntityFactoryDictionary()
 	return dict;
 }
 
-bool SMSendPropUtils::SDK_OnLoad(char* error, size_t maxlength, bool late)
+bool SMEntPropUtils::SDK_OnLoad(char* error, size_t maxlength, bool late)
 {
 	SMServerClass::get_dict = std::bind(GetEntityFactoryDictionary);
 
@@ -120,7 +128,7 @@ bool SMSendPropUtils::SDK_OnLoad(char* error, size_t maxlength, bool late)
 }
 
 #ifdef SMEXT_CONF_METAMOD
-bool SMSendPropUtils::SDK_OnMetamodLoad(ISmmAPI* ismm, char* error, size_t maxlen, bool late)
+bool SMEntPropUtils::SDK_OnMetamodLoad(ISmmAPI* ismm, char* error, size_t maxlen, bool late)
 {
 
 	GET_V_IFACE_CURRENT(GetServerFactory, servertools, IServerTools, VSERVERTOOLS_INTERFACE_VERSION);
@@ -128,5 +136,5 @@ bool SMSendPropUtils::SDK_OnMetamodLoad(ISmmAPI* ismm, char* error, size_t maxle
 }
 #endif
 
-SMSendPropUtils g_SMSendPropUtils;
-SMEXT_LINK(&g_SMSendPropUtils);
+SMEntPropUtils g_SMEntPropUtils;
+SMEXT_LINK(&g_SMEntPropUtils);
