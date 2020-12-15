@@ -36,18 +36,28 @@
 
 #include <toolframework/itoolentity.h>
 
+#if SOURCE_ENGINE == SE_TF2        \
+	|| SOURCE_ENGINE == SE_CSS     \
+	|| SOURCE_ENGINE == SE_DODS    \
+	|| SOURCE_ENGINE == SE_HL2DM   \
+	|| SOURCE_ENGINE == SE_SDK2013 \
+	|| SOURCE_ENGINE == SE_BMS     \
+	|| SOURCE_ENGINE == SE_NUCLEARDAWN
+#define _USE_SERVER_TOOLS
+#endif
+
 class SMEntPropUtils : public SDKExtension
 {
 public:
 	bool SDK_OnLoad(char* error, size_t maxlength, bool late) override;
 
 public:
-#ifdef SMEXT_CONF_METAMOD
+#ifdef _USE_SERVER_TOOLS
 	bool SDK_OnMetamodLoad(ISmmAPI* ismm, char* error, size_t maxlength, bool late) override;
 #endif
 };
 
-#ifdef SMEXT_CONF_METAMOD
+#ifdef _USE_SERVER_TOOLS
 static IServerTools* servertools;
 #endif
 
@@ -56,7 +66,7 @@ static SMServerClass::CEntityFactoryDictionary* GetEntityFactoryDictionary()
 	using EntFactory = SMServerClass::CEntityFactoryDictionary;
 	static EntFactory* dict = nullptr;
 
-#ifdef SMEXT_CONF_METAMOD
+#ifdef _USE_SERVER_TOOLS
 	dict = reinterpret_cast<EntFactory*>(servertools->GetEntityFactoryDictionary());
 #else
 	IGameConfig* gc;
@@ -77,20 +87,17 @@ static SMServerClass::CEntityFactoryDictionary* GetEntityFactoryDictionary()
 
 			dict = *reinterpret_cast<EntFactory**>((intptr_t)addr + offset);
 		}
-	}
-
-	if (!dict)
-	{
-		void* addr;
-		if (!gc->GetMemSig("EntityFactory", &addr) || !addr)
+		if (!dict)
 		{
-			int offset;
-
-			if (!gc->GetMemSig("EntityFactoryCaller", &addr) || !addr)
-			{
-				gameconfs->CloseGameConfigFile(gc);
-				return nullptr;
-			}
+			void* addr;
+			if (!gc->GetMemSig("EntityFactory", &addr) || !addr)
+			{   
+				int offset;
+				if (!gc->GetMemSig("EntityFactoryCaller", &addr) || !addr)
+				{
+					gameconfs->CloseGameConfigFile(gc);
+					return nullptr;
+				}
 
 			if (!gc->GetOffset("EntityFactoryCallOffset", &offset))
 			{
@@ -105,12 +112,15 @@ static SMServerClass::CEntityFactoryDictionary* GetEntityFactoryDictionary()
 			// Address of signature + offset of relative offset + sizeof(int32_t) offset + relative offset
 			addr = reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(addr) + offset + 4 + funcOffset);
 		}
-
-		auto call = reinterpret_cast<EntFactory*(*)()>(addr);
-		if (call)
-			dict = call();
+			auto call = reinterpret_cast<EntFactory*(*)()>(addr);
+	
+			if (call)
+				dict = call();
+		}
+		gameconfs->CloseGameConfigFile(gc);
 	}
-	gameconfs->CloseGameConfigFile(gc);
+
+	
 #endif
 
 	return dict;
@@ -127,7 +137,7 @@ bool SMEntPropUtils::SDK_OnLoad(char* error, size_t maxlength, bool late)
 	return true;
 }
 
-#ifdef SMEXT_CONF_METAMOD
+#ifdef _USE_SERVER_TOOLS
 bool SMEntPropUtils::SDK_OnMetamodLoad(ISmmAPI* ismm, char* error, size_t maxlen, bool late)
 {
 
