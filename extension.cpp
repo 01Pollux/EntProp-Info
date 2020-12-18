@@ -111,11 +111,11 @@ static SMServerClass::CEntityFactoryDictionary* GetEntityFactoryDictionary()
 			// Get real address of function
 			// Address of signature + offset of relative offset + sizeof(int32_t) offset + relative offset
 			addr = reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(addr) + offset + 4 + funcOffset);
-		}
 			auto call = reinterpret_cast<EntFactory*(*)()>(addr);
 	
 			if (call)
 				dict = call();
+		}
 		}
 		gameconfs->CloseGameConfigFile(gc);
 	}
